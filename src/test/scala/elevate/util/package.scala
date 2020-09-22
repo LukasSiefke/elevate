@@ -21,33 +21,38 @@ package object util {
     val emptySubs: (Map[Type, Type],
       Map[NatIdentifier, Nat],
       Map[AddressSpaceIdentifier, AddressSpace],
-      Map[NatToDataIdentifier, NatToData]) = (Map(), Map(), Map(), Map())
-    val (expr, (ts, ns, as, n2ds)) = TopLevel.getFTVs(e.t).foldLeft((e, emptySubs))((acc, ftv) => acc match {
-      case (expr, (ts, ns, as, n2ds)) => ftv match {
+      Map[NatToDataIdentifier, NatToData],
+      Map[MatrixLayoutIdentifier, MatrixLayout]) = (Map(), Map(), Map(), Map(), Map())
+    val (expr, (ts, ns, as, n2ds, mls)) = TopLevel.getFTVs(e.t).foldLeft((e, emptySubs))((acc, ftv) => acc match {
+      case (expr, (ts, ns, as, n2ds, mls)) => ftv match {
         case i: TypeIdentifier =>
           val dt = DataTypeIdentifier(freshName("dt"), isExplicit = true)
           (DepLambda[DataKind](dt, expr)(DepFunType[DataKind, Type](dt, expr.t)),
-            (ts ++ Map(i -> dt), ns, as , n2ds))
+            (ts ++ Map(i -> dt), ns, as , n2ds, mls))
         case i: DataTypeIdentifier =>
           val dt = i.asExplicit
           (DepLambda[DataKind](dt, expr)(DepFunType[DataKind, Type](dt, expr.t)),
-            (ts ++ Map(i -> dt), ns, as , n2ds))
+            (ts ++ Map(i -> dt), ns, as , n2ds, mls))
         case i: NatIdentifier =>
           val n = i.asExplicit
           (DepLambda[NatKind](n, expr)(DepFunType[NatKind, Type](n, expr.t)),
-            (ts, ns ++ Map(i -> n), as, n2ds))
+            (ts, ns ++ Map(i -> n), as, n2ds, mls))
         case i: AddressSpaceIdentifier =>
           val a = i.asExplicit
           (DepLambda[AddressSpaceKind](a, expr)(DepFunType[AddressSpaceKind, Type](a, expr.t)),
-            (ts, ns, as ++ Map(i -> a), n2ds))
+            (ts, ns, as ++ Map(i -> a), n2ds, mls))
         case i: NatToDataIdentifier =>
           val n2d = i.asExplicit
           (DepLambda[NatToDataKind](n2d, expr)(DepFunType[NatToDataKind, Type](n2d, expr.t)),
-            (ts, ns, as, n2ds ++ Map(i -> n2d)))
+            (ts, ns, as, n2ds ++ Map(i -> n2d), mls))
+        case i: MatrixLayoutIdentifier =>
+            val ml = i.asExplicit
+          (DepLambda[MatrixLayoutKind](ml, expr)(DepFunType[MatrixLayoutKind, Type](ml, expr.t)),
+            (ts, ns, as, n2ds, mls ++ Map(i -> ml)))
         case i => throw TypeException(s"${i.getClass} is not supported yet")
       }
     })
-    (new Solution(ts, ns, as, n2ds)(expr), ts.size + ns.size + as.size + n2ds.size)
+    (new Solution(ts, ns, as, n2ds, mls)(expr), ts.size + ns.size + as.size + n2ds.size + mls.size)
   }
 
   // notation
